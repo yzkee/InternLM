@@ -48,11 +48,11 @@ swift sft --model_type internlm2-1_8b-chat \
 
 LMDeploy is an efficient toolkit for compressing, deploying, and serving LLMs and VLMs.
 
-With only 4 lines of code, you can perform `internlm2_5-7b-chat` inference after `pip install lmdeploy`:
+With only 4 lines of code, you can perform `internlm3-8b-instruct` inference after `pip install lmdeploy`:
 
 ```python
 from lmdeploy import pipeline
-pipe = pipeline("internlm/internlm2_5-7b-chat")
+pipe = pipeline("internlm/internlm3-8b-instruct")
 response = pipe(["Hi, pls intro yourself", "Shanghai is"])
 print(response)
 ```
@@ -61,7 +61,13 @@ print(response)
 
 `vLLM` is a high-throughput and memory-efficient inference and serving engine for LLMs.
 
-After the installation via `pip install vllm`, you can conduct the `internlm2_5-7b-chat` model inference as follows:
+Refer to [installation](https://docs.vllm.ai/en/latest/getting_started/installation/index.html) to install the latest code of vllm
+
+```bash
+pip install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
+```
+
+Then, you can conduct the `internlm3-8b-instruct` model inference as follows:
 
 ```python
 from vllm import LLM, SamplingParams
@@ -75,7 +81,7 @@ prompts = [
 sampling_params = SamplingParams(temperature=0.8, top_p=0.95)
 
 # Create an LLM.
-llm = LLM(model="internlm/internlm2_5-7b-chat", trust_remote_code=True)
+llm = LLM(model="internlm/internlm3-8b-instruct", trust_remote_code=True)
 # Generate texts from the prompts. The output is a list of RequestOutput objects
 # that contain the prompt, generated text, and other information.
 outputs = llm.generate(prompts, sampling_params)
@@ -84,6 +90,28 @@ for output in outputs:
     prompt = output.prompt
     generated_text = output.outputs[0].text
     print(f"Prompt: {prompt!r}, Generated text: {generated_text!r}")
+```
+
+### [SGLang](https://github.com/sgl-project/sglang)
+
+`SGLang` is a fast serving framework for large language models and vision language models.
+
+After the installation following the official [documentation](https://docs.sglang.ai/start/install.html), you can conduct the `internlm3-8b-instruct` model inference as follows:
+
+```shell
+python3 -m sglang.launch_server --model internlm/internlm3-8b-instruct --trust-remote-code --chat-template internlm2-chat
+```
+
+```shell
+curl http://127.0.0.1:30000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer EMPTY" \
+  -d '{
+    "model": "internlm/internlm3-8b-instruct",
+    "messages": [{"role": "user", "content": "Introduce Shanghai"}],
+    "stream": false
+  }' \
+  --no-buffer
 ```
 
 ### [TGI](https://github.com/huggingface/text-generation-inference)
@@ -110,7 +138,7 @@ curl 127.0.0.1:8080/generate_stream \
 
 `llama.cpp` is a LLM inference framework developed in C/C++. Its goal is to enable LLM inference with minimal setup and state-of-the-art performance on a wide variety of hardware - locally and in the cloud.
 
-`InternLM2` and `InternLM2.5` can be deployed with `llama.cpp` by following the below instructions:
+`InternLM2`, `InternLM2.5` and `InternLM3` can be deployed with `llama.cpp` by following the below instructions:
 
 - Refer [this](https://github.com/ggerganov/llama.cpp?tab=readme-ov-file#build) guide to build llama.cpp from source
 - Convert the InternLM model to GGUF model and run it according to the [guide](https://github.com/ggerganov/llama.cpp?tab=readme-ov-file#prepare-and-quantize)
@@ -119,14 +147,14 @@ curl 127.0.0.1:8080/generate_stream \
 
 Ollama bundles model weights, configuration, and data into a single package, defined by a Modelfile. It optimizes setup and configuration details, enabling users to easily set up and execute LLMs locally (in CPU and GPU modes).
 
-The following snippet presents the Modefile of InternLM2.5 with `internlm2_5-7b-chat` as an example. Note that the model has to be converted to GGUF model at first.
+The following snippet presents the Modefile of InternLM2.5 with `internlm3-8b-instruct` as an example. Note that the model has to be converted to GGUF model at first.
 
 ```shell
-echo 'FROM ./internlm2_5-7b-chat.gguf
+echo 'FROM ./internlm3-8b-instruct.gguf
 TEMPLATE """{{ if .System }}<|im_start|>system
 {{ .System }}<|im_end|>
 {{ end }}{{ if .Prompt }}<|im_start|>user
-{{ .Prompt }}<im_end>
+{{ .Prompt }}<|im_end|>
 {{ end }}<|im_start|>assistant
 {{ .Response }}<|im_end|>"""
 
@@ -143,7 +171,7 @@ SYSTEM """You are an AI assistant whose name is InternLM (书生·浦语).
 Then, create an image from the above `Modelfile` like this:
 
 ```shell
-ollama create internlm2.5:7b-chat -f ./Modelfile
+ollama create internlm3:8b-instruct -f ./Modelfile
 ```
 
 Regarding the usage of `ollama`, please refer [here](https://github.com/ollama/ollama/tree/main/docs).
@@ -152,19 +180,19 @@ Regarding the usage of `ollama`, please refer [here](https://github.com/ollama/o
 
 llamafile lets you turn large language model (LLM) weights into executables. It combines [llama.cpp](https://github.com/ggerganov/llama.cpp) with [Cosmopolitan Libc](https://github.com/jart/cosmopolitan).
 
-The best practice of deploying InternLM2 or InternLM2.5 using llamafile is shown as below:
+The best practice of deploying InternLM2, InternLM2.5 or InternLM3 using llamafile is shown as below:
 
-- Convert the model into GGUF model by `llama.cpp`. Suppose we get `internlm2_5-chat-7b.gguf` in this step
+- Convert the model into GGUF model by `llama.cpp`. Suppose we get `internlm3-8b-instruct.gguf` in this step
 - Create the llamafile
 
 ```shell
 wget https://github.com/Mozilla-Ocho/llamafile/releases/download/0.8.6/llamafile-0.8.6.zip
 unzip llamafile-0.8.6.zip
 
-cp llamafile-0.8.6/bin/llamafile internlm2_5.llamafile
+cp llamafile-0.8.6/bin/llamafile internlm3.llamafile
 
 echo "-m
-internlm2_5-chat-7b.gguf
+internlm3-8b-instruct.gguf
 --host
 0.0.0.0
 -ngl
@@ -172,8 +200,8 @@ internlm2_5-chat-7b.gguf
 ..." > .args
 
 llamafile-0.8.6/bin/zipalign -j0 \
-  internlm2_5.llamafile \
-  internlm2_5-chat-7b.gguf \
+  internlm3.llamafile \
+  internlm3-8b-instruct.gguf \
   .args
 
 rm -rf .args
@@ -182,7 +210,7 @@ rm -rf .args
 - Run the llamafile
 
 ```shell
-./internlm2_5.llamafile
+./internlm3.llamafile
 ```
 
 Your browser should open automatically and display a chat interface. (If it doesn't, just open your browser and point it at http://localhost:8080)
@@ -221,8 +249,9 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
 llm = ChatOpenAI(
-    api_key="a dummy key",
-    base_ur='https://0.0.0.0:23333/v1')
+    model_name="a-model",
+    openai_api_key="a dummy key",
+    openai_api_base='https://0.0.0.0:23333/v1')
 prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a world class technical documentation writer."),
     ("user", "{input}")
@@ -245,6 +274,13 @@ It chooses ollama as the LLM inference engine locally. An example can be found f
 
 Therefore, you can integrate InternLM2 or InternLM2.5 models to LlamaIndex smoothly if you can deploying them with `ollama` as guided in the [ollama section](#ollama)
 
+### [open-webui](https://github.com/open-webui/open-webui)
+
+Open WebUI is an extensible, feature-rich, and user-friendly self-hosted AI platform designed to run completely offline. It supports Ollama services and other compatible OpenAI API services, and comes with a built-in RAG reasoning engine, making it a powerful AI deployment solution.
+
+1. You can start an API service with LMDeploy, or launch the service with ollama.
+2. Follow the [guidance](https://github.com/open-webui/open-webui?tab=readme-ov-file#installation-via-python-pip-)to install Open WebUI, and start the webui service with open-webui serve. Open the webui in your browser.
+3. Refer to the [documentation](https://docs.openwebui.com/getting-started/quick-start/starting-with-ollama#step-2-managing-your-ollama-instance). Inside the opened page, find the settings, configure the OpenAI-like services or ollama services. Once configured, you can choose a model to engage in conversation.
 
 ### [LazyLLM](https://github.com/LazyAGI/LazyLLM)
 
@@ -282,6 +318,7 @@ from lazyllm import pipeline, parallel, bind, SentenceSplitter, Document, Retrie
 
 prompt = 'You will play the role of an AI Q&A assistant and complete a dialogue task. In this task, you need to provide your answer based on the given context and question.'
 ```
+
 </details>
 
 ```python
